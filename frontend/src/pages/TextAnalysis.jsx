@@ -26,6 +26,68 @@ function ConfidenceBar({ value, color, label }) {
   )
 }
 
+function TextShapExplanation({ result }) {
+  const highlightedText = result?.highlighted_text
+  const shapValues = result?.shap_values
+
+  if (!highlightedText?.length && !shapValues?.length) return null
+
+  return (
+    <div className="mt-5 pt-5 border-t border-white/8">
+      <div className="mb-3">
+        <h3 className="text-sm font-semibold text-white">Text attribution · SHAP</h3>
+        {result.explanation?.summary && (
+          <p className="mt-1 text-xs leading-relaxed text-slate-400">{result.explanation.summary}</p>
+        )}
+      </div>
+
+      {highlightedText?.length > 0 && (
+        <div className="rounded-lg border border-white/8 bg-black/10 p-3 mb-4 leading-7 text-sm text-slate-300">
+          {highlightedText.map((segment, index) => {
+            const value = Number(segment.shap || 0)
+            const color = value > 0
+              ? 'rgba(225, 135, 115, 0.28)'
+              : value < 0
+                ? 'rgba(167, 183, 154, 0.28)'
+                : 'transparent'
+            return (
+              <span
+                key={`${index}-${segment.text}`}
+                className="rounded px-0.5"
+                style={{ backgroundColor: color }}
+                title={`SHAP: ${value > 0 ? '+' : ''}${value.toFixed(4)}`}
+              >
+                {segment.text}
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      {shapValues?.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {shapValues.slice(0, 12).map((item, index) => {
+            const value = Number(item.shap || 0)
+            const pushesAI = value > 0
+            return (
+              <div key={`${index}-${item.feature}`} className="grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-3">
+                <span className="truncate text-xs text-slate-400" title={item.feature}>{item.feature}</span>
+                <span className={`text-right text-xs font-mono ${pushesAI ? 'text-coral-300' : 'text-sage-300'}`}>
+                  {value > 0 ? '+' : ''}{value.toFixed(4)}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="mt-4 text-xs leading-relaxed text-slate-500">
+        Coral segments push toward AI-generated; sage segments push toward human-written.
+      </p>
+    </div>
+  )
+}
+
 export default function TextAnalysis() {
   const [text, setText] = useState('')
   const [analysisType, setAnalysisType] = useState('misinformation')
@@ -71,9 +133,9 @@ export default function TextAnalysis() {
       : result.prediction
   const samples = isMisinformationMode
     ? [
-      'India is not a country',
-      'Iran war is happening on',
-      'Robots are everywhere humans are dead',
+      'The government announced a new policy after the election results were certified.',
+      'Police reported that the hospital attack occurred on Saturday.',
+      'According to officials, the new vaccine approval was announced after clinical trials.',
     ]
     : [
       'The implementation of blockchain technology in modern supply chain management systems facilitates unprecedented levels of traceability and transparency.',
@@ -221,6 +283,7 @@ export default function TextAnalysis() {
                         <p className="mt-3 text-xs leading-relaxed text-slate-500">
                           AI-authorship scores are estimates and are not proof of who wrote the text.
                         </p>
+                        <TextShapExplanation result={result} />
                       </>
                     )}
                   </div>

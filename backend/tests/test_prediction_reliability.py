@@ -125,6 +125,18 @@ class PredictionReliabilityTests(unittest.TestCase):
         self.assertEqual(result["prediction"], "Fake News")
         self.assertEqual(result["fake_score"], 0.9)
 
+    def test_bare_general_knowledge_claim_is_not_forced_to_misinformation(self):
+        service = TextAnalysisService.__new__(TextAnalysisService)
+        service.fakenews_model = object()
+        service.fakenews_tokenizer = object()
+        service._infer_model = lambda *_: self.fail("A bare general-knowledge claim should not reach the classifier.")
+
+        result = asyncio.run(service.analyze_fake_news("The Earth revolves around the Sun"))
+
+        self.assertEqual(result["prediction"], "Not a news claim")
+        self.assertEqual(result["status"], "not_applicable")
+        self.assertIsNone(result["fake_score"])
+
     def test_ai_authorship_only_mode_skips_misinformation_inference(self):
         service = TextAnalysisService.__new__(TextAnalysisService)
         service.hc3_model = None

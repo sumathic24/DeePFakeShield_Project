@@ -40,6 +40,12 @@ SOCIAL_GREETING_PATTERN = re.compile(
     r"(?: (?:there|i am [\w'-]+|i'm [\w'-]+))?"
     r"(?: for this too)?"
 )
+NEWS_CUE_PATTERN = re.compile(
+    r"\b(?:government|president|minister|prime minister|election|war|police|"
+    r"hospital|country|nations?|report(?:s|ed)?|according|announced|said|"
+    r"arrested|killed|dies?|vaccine|covid|disease|attack|court|company|scientists?)\b",
+    re.IGNORECASE,
+)
 if not 0.5 <= MIN_PREDICTION_CONFIDENCE <= 1.0:
     raise ValueError("TEXT_MIN_CONFIDENCE must be between 0.5 and 1.")
 
@@ -166,6 +172,12 @@ class TextAnalysisService:
         return bool(SOCIAL_GREETING_PATTERN.fullmatch(normalized))
 
     @staticmethod
+    def _is_low_context_claim(text: str) -> bool:
+        """Abstain when a bare sentence is too short for the news-article classifier."""
+        normalized = " ".join(text.split())
+        return len(normalized) < 60 and not NEWS_CUE_PATTERN.search(normalized)
+
+    @staticmethod
     def _insufficient_fake_news_context() -> Dict[str, Any]:
         return {
             "prediction": "Not a news claim",
@@ -173,7 +185,7 @@ class TextAnalysisService:
             "confidence": None,
             "fake_score": None,
             "real_score": None,
-            "reason": "The misinformation classifier assesses news claims, not greetings or personal introductions.",
+            "reason": "The misinformation classifier needs a news claim or enough article context, not a bare statement or personal introduction.",
         }
 
     def _infer_model(self, model, tokenizer, text: str, max_length: int = 512,
@@ -327,7 +339,12 @@ class TextAnalysisService:
         human_score = 1.0 - ensemble_score
 
         # Fake news score
-        if include_fake_news and self.fakenews_model and not self._is_social_greeting(text):
+        if (
+            include_fake_news
+            and self.fakenews_model
+            and not self._is_social_greeting(text)
+            and not self._is_low_context_claim(text)
+        ):
             loop = asyncio.get_event_loop()
             fake_score = await loop.run_in_executor(
                 None, self._infer_model, self.fakenews_model, self.fakenews_tokenizer,
@@ -374,7 +391,7 @@ class TextAnalysisService:
         t0 = time.time()
 
         if self.fakenews_model:
-            if self._is_social_greeting(text):
+            if self._is_social_greeting(text) or self._is_low_context_claim(text):
                 classification = self._insufficient_fake_news_context()
             else:
                 loop = asyncio.get_event_loop()
