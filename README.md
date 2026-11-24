@@ -18,7 +18,7 @@ DeepFakeShield is a multimodal detection application with separate text, image, 
 
 - **Text** — A configured pretrained detector scores AI-authorship likelihood and SHAP attributes the score to input tokens. A separate pretrained fake-news classifier estimates similarity to its training labels; it does not verify claims against sources.
 - **Images** — The configured pretrained classifier distinguishes artificial from real and returns Grad-CAM maps for regions influencing its prediction. It does not identify manipulated images as a separate class.
-- **Video** — A configured ConvNeXt detector scores representative frames and returns frame-wise Grad-CAM explanations, scores, and timestamps.
+- **Video** — A configured CNN+LSTM detector scores representative frames and returns frame-wise Grad-CAM explanations, scores, and timestamps.
 - **Abstention** — Low-confidence text and image scores are returned as uncertain. Video always reports the higher-scoring AI/Real class and flags low-confidence predictions.
 
 The pretrained detectors' confidence scores are not calibrated accuracy estimates. SHAP and Grad-CAM explain model behavior; they do not prove authorship or manipulation.
